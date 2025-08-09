@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profiles
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['fullName', 'profileCompleted']) &&
+        request.resource.data.role == resource.data.role;
+      allow create: if false; // Only Admin SDK can create
+      allow delete: if false;
+    }
+
+    // Submissions
+    match /submissions/{submissionId} {
+      allow create: if request.auth != null &&
+        request.resource.data.studentUid == request.auth.uid &&
+        request.resource.data.assignedTeacherUid is string &&
+        request.resource.data.title is string &&
+        request.resource.data.description is string &&
+        (
+          // Drive link only
+          (request.resource.data.driveLink is string && !('fileUrl' in request.resource.data)) ||
+          // Or legacy file fields are present for backward compatibility (client no longer writes these)
+          (request.resource.data.fileUrl is string && request.resource.data.fileName is string)
+        );
+
+      allow read: if request.auth != null && (
+        // Owner can read their own submissions
+        resource.data.studentUid == request.auth.uid ||
+        // Assigned teacher can read
+        resource.data.assignedTeacherUid == request.auth.uid ||
+        // Admins can read - requires custom claim or user doc check via functions. Here we restrict to user doc check.
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+
+      allow update: if request.auth != null && (
+        // Student can update only title/description/driveLink before grading
+        (resource.data.studentUid == request.auth.uid && resource.data.status == 'pending' &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['title','description','driveLink','linkTitle'])) ||
+        // Assigned teacher can set grade/feedback/status
+        (resource.data.assignedTeacherUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).changedKeys().subset(['grade','feedback','status','gradedAt','gradedBy'])) ||
+        // Admins can update anything (rarely used from client; mostly Admin SDK)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+
+      allow delete: if false;
+    }
+  }
+}
