@@ -31,7 +31,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 });
     }
 
-    const { email, fullName, role, tempPassword } = await req.json();
+  const body = await req.json();
+  const email: string = body.email;
+  const fullName: string = body.fullName;
+  const role: 'student' | 'teacher' = body.role;
+  const tempPassword: string = body.tempPassword;
+  const department: string | undefined = body.department?.trim() || undefined;
+  const phone: string | undefined = body.phone?.trim() || undefined;
+  const externalId: string | undefined = body.externalId?.trim() || undefined;
+  const batch: string | undefined = body.batch?.trim() || undefined;
+  const course: string | undefined = body.course?.trim() || undefined;
+  const title: string | undefined = body.title?.trim() || undefined;
 
     if (!email || !fullName || !role || !tempPassword) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -62,11 +72,17 @@ export async function POST(req: NextRequest) {
       fullName,
       role,
       profileCompleted: true,
+      department,
+      phone,
+      externalId,
+      batch: role === 'student' ? batch : undefined,
+      course: role === 'student' ? course : undefined,
+      title: role === 'teacher' ? title : undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    return NextResponse.json({ success: true, uid: userRecord.uid }, { status: 201 });
+    return NextResponse.json({ success: true, uid: userRecord.uid, role, email, fullName }, { status: 201 });
   } catch (error: unknown) {
     let message = 'Internal server error';
     let status = 500;

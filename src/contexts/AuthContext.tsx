@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User } from '@/types';
 import toast from 'react-hot-toast';
@@ -54,8 +54,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [justSignedIn, setJustSignedIn] = useState(false);
 
-  const loadUserProfile = async (fbUser: FirebaseUser) => {
+  const loadUserProfile = useCallback(async (fbUser: FirebaseUser) => {
     try {
       // Optional email domain restriction
       if (allowedDomain && fbUser.email && !fbUser.email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
@@ -80,11 +81,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const userData = userDoc.data() as User;
       setUser(userData);
+      if (justSignedIn) {
+        toast.success(`Signed in as ${userData.role}`, { duration: 1500 });
+        setJustSignedIn(false);
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
       toast.error('Failed to load user profile');
     }
-  };
+  }, [justSignedIn]);
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
@@ -97,7 +102,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw err;
       }
 
-      await signInWithEmailAndPassword(auth, email, password);
+  setJustSignedIn(true);
+  await signInWithEmailAndPassword(auth, email, password);
       // user/profile loads in onAuthStateChanged
     } catch (error) {
       console.error('Error signing in with email:', error);
@@ -187,7 +193,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [loadUserProfile]);
 
   const getAuthToken = async (): Promise<string | null> => {
     try {

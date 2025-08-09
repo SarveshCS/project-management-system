@@ -4,6 +4,18 @@ export interface User {
   email: string;
   role: 'student' | 'teacher' | 'admin';
   profileCompleted?: boolean;
+  // Admin-managed metadata (optional)
+  department?: string;
+  phone?: string;
+  externalId?: string; // employee or student ID
+  // Student-only
+  batch?: string;
+  course?: string;
+  // Teacher-only
+  title?: string; // Professor, Assistant Professor, Dr., etc.
+  // Timestamps (may be Date or Firestore Timestamp serialized)
+  createdAt?: Date | string | number;
+  updatedAt?: Date | string | number;
 }
 
 export interface Submission {

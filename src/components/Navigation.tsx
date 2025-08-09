@@ -31,6 +31,8 @@ export const Navigation = () => {
 
   const adminNavItems = [
     { href: '/admin', label: 'Admin Panel', icon: <AdminPanelSettings /> },
+    { href: '/admin/register/teacher', label: 'Register Teacher', icon: <Add /> },
+    { href: '/admin/register/student', label: 'Register Student', icon: <Add /> },
   ];
 
   const navItems = user?.role === 'student' ? studentNavItems : user?.role === 'teacher' ? teacherNavItems : adminNavItems;

@@ -1,9 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // User profiles
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow users to read their own profile, admins to read any profile,
+      // and allow all signed-in users to read teacher profiles (to populate teacher dropdowns)
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        resource.data.role == 'teacher'
+      );
       allow update: if request.auth != null && request.auth.uid == userId &&
         request.resource.data.diff(resource.data).changedKeys().hasOnly(['fullName', 'profileCompleted']) &&
         request.resource.data.role == resource.data.role;
@@ -31,8 +47,7 @@ service cloud.firestore {
         // Assigned teacher can read
         resource.data.assignedTeacherUid == request.auth.uid ||
         // Admins can read - requires custom claim or user doc check via functions. Here we restrict to user doc check.
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
 
       allow update: if request.auth != null && (
@@ -43,8 +58,7 @@ service cloud.firestore {
         (resource.data.assignedTeacherUid == request.auth.uid &&
           request.resource.data.diff(resource.data).changedKeys().subset(['grade','feedback','status','gradedAt','gradedBy'])) ||
         // Admins can update anything (rarely used from client; mostly Admin SDK)
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+  isAdmin()
       );
 
       allow delete: if false;

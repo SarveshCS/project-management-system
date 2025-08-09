@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, getCountFromServer, query, where } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { collection, getCountFromServer, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 const normalizeAllowedDomain = (value?: string) => {
@@ -51,9 +51,15 @@ export default function AdminPage() {
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [tempPassword, setTempPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [department, setDepartment] = useState('');
+  const [phone, setPhone] = useState('');
+  const [externalId, setExternalId] = useState('');
+  type Recent = { id: string; title: string; studentName: string; status: 'pending' | 'graded'; submittedAt?: Date };
+  type UserRow = { uid: string; fullName: string; email: string; role: 'student' | 'teacher' | 'admin' };
+  const [recentSubmissions, setRecentSubmissions] = useState<Recent[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
 
-  useEffect(() => {
-    const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
       try {
         const studentsSnap = await getCountFromServer(
           query(collection(db, 'users'), where('role', '==', 'student'))
@@ -76,12 +82,47 @@ export default function AdminPage() {
           submissions: submissionsSnap.data().count,
           pending: pendingSnap.data().count,
         });
-      } catch (e) {
+    } catch (e) {
         console.error('Failed to load admin stats', e);
       }
-    };
-    fetchStats();
   }, []);
+  const fetchRecent = useCallback(async () => {
+      try {
+        const q = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'), limit(5));
+        const snap = await getDocs(q);
+        const rec = snap.docs.map((d) => {
+          const data = d.data() as Partial<Recent> & Record<string, unknown>;
+          return {
+            id: d.id,
+            title: String(data.title || ''),
+            studentName: String(data.studentName || ''),
+            status: (data.status === 'graded' ? 'graded' : 'pending') as Recent['status'],
+            submittedAt: data.submittedAt ? new Date(String(data.submittedAt)) : undefined,
+          } satisfies Recent;
+        });
+        setRecentSubmissions(rec);
+    } catch (e) {
+        console.error('Failed to load recent submissions', e);
+      }
+  }, []);
+  const fetchUsers = useCallback(async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'users'), orderBy('fullName'), limit(20)));
+        const list = snap.docs.map((d) => {
+          const data = d.data() as Partial<UserRow> & Record<string, unknown>;
+          return {
+            uid: d.id,
+            fullName: String(data.fullName || ''),
+            email: String(data.email || ''),
+            role: (data.role === 'teacher' || data.role === 'admin' ? data.role : 'student') as UserRow['role'],
+          } satisfies UserRow;
+        });
+        setUsers(list);
+    } catch (e) {
+        console.error('Failed to load users', e);
+      }
+  }, []);
+  useEffect(() => { fetchStats(); fetchRecent(); fetchUsers(); }, [fetchStats, fetchRecent, fetchUsers]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,17 +143,21 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email, fullName, role, tempPassword }),
+        body: JSON.stringify({ email, fullName, role, tempPassword, department, phone, externalId }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create user');
 
-      toast.success('User created');
-      setEmail('');
-      setFullName('');
-      setTempPassword('');
-      setRole('student');
+  toast.success('User created');
+  setEmail('');
+  setFullName('');
+  setTempPassword('');
+  setRole('student');
+  setDepartment('');
+  setPhone('');
+  setExternalId('');
+  await Promise.all([fetchStats(), fetchUsers()]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create user';
       toast.error(message);
@@ -138,6 +183,11 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold">{totalUsers}</p>
+              <div className="mt-2 flex gap-2 flex-wrap">
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-accent/10 text-accent">{stats.students} Students</span>
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-action/10 text-action">{stats.teachers} Teachers</span>
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-primary/10 text-primary">{stats.admins} Admins</span>
+              </div>
             </CardContent>
           </Card>
 
@@ -170,13 +220,13 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Create User</CardTitle>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4" onSubmit={onSubmit}>
+      <form className="space-y-5" onSubmit={onSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="fullName">Full Name</Label>
@@ -228,6 +278,7 @@ export default function AdminPage() {
                       value={tempPassword}
                       onChange={(e) => setTempPassword(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Password will require change on first login.</p>
                   </div>
                 </div>
 
@@ -241,16 +292,64 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Notes</CardTitle>
+              <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-2">
-                <li>There isn&apos;t any external registration flow. Only admins can create users.</li>
-                <li>Use institutional email addresses for students and teachers.</li>
-                <li>Temporary passwords should be updated by users after first login.</li>
-              </ul>
+              {recentSubmissions.length === 0 ? (
+                <EmptyState title="No recent submissions" description="New activity will appear here." />
+              ) : (
+                <div className="divide-y divide-border">
+                  {recentSubmissions.map((s) => (
+                    <div key={s.id} className="py-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-foreground">{s.title}</p>
+                        <p className="text-xs text-muted-foreground">{s.studentName} • {s.status}</p>
+                      </div>
+                      <Badge tone={s.status === 'graded' ? 'primary' : 'action'}>{s.status}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {users.length === 0 ? (
+                <EmptyState title="No users found" description="Users created will show up here." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-muted-foreground">
+                      <tr>
+                        <th className="py-2 pr-4">Name</th>
+                        <th className="py-2 pr-4">Email</th>
+                        <th className="py-2 pr-4">Role</th>
+                        <th className="py-2 pr-4">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {users.map((u) => (
+                        <tr key={u.uid}>
+                          <td className="py-2 pr-4 font-medium">{u.fullName}</td>
+                          <td className="py-2 pr-4">{u.email}</td>
+                          <td className="py-2 pr-4 capitalize">{u.role}</td>
+                          <td className="py-2 pr-4">
+                            <a href={`/admin/users/${u.uid}`} className="text-primary hover:underline">View</a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
