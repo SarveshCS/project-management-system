@@ -1,13 +1,17 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigation } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Submission } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Grade, Assignment, CheckCircle, Pending } from '@mui/icons-material';
 
 export default function TeacherDashboard() {
@@ -46,22 +50,16 @@ export default function TeacherDashboard() {
   const gradedSubmissions = submissions.filter(s => s.status === 'graded');
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome back, Professor {user?.fullName}!
-          </h1>
-          <p className="text-muted-foreground">
-            Review and grade student project submissions.
-          </p>
-        </div>
+    <AppShell>
+      <PageHeader
+        title={`Welcome back, Professor ${user?.fullName}!`}
+        subtitle="Review and grade student project submissions."
+      />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-card border border-border rounded-lg p-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-accent rounded-lg">
                 <Pending className="text-accent-foreground" />
@@ -71,9 +69,11 @@ export default function TeacherDashboard() {
                 <p className="text-2xl font-bold text-accent">{pendingSubmissions.length}</p>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="bg-card border border-border rounded-lg p-6">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-action rounded-lg">
                 <CheckCircle className="text-action-foreground" />
@@ -83,9 +83,11 @@ export default function TeacherDashboard() {
                 <p className="text-2xl font-bold text-action">{gradedSubmissions.length}</p>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="bg-card border border-border rounded-lg p-6">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-primary rounded-lg">
                 <Assignment className="text-primary-foreground" />
@@ -95,23 +97,21 @@ export default function TeacherDashboard() {
                 <p className="text-2xl font-bold text-primary">{submissions.length}</p>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
         {/* Pending Submissions - High Priority */}
         {pendingSubmissions.length > 0 && (
-          <div className="bg-card border border-border rounded-lg mb-8">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <Grade className="text-accent" />
                 Submissions Awaiting Review
-                <span className="bg-accent text-accent-foreground text-sm px-2 py-1 rounded-full">
-                  {pendingSubmissions.length}
-                </span>
-              </h2>
-            </div>
-
-            <div className="p-6">
+                <Badge tone="accent" className="ml-2">{pendingSubmissions.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
                 {pendingSubmissions.map((submission) => (
                   <Link
@@ -125,9 +125,7 @@ export default function TeacherDashboard() {
                           <h3 className="font-medium text-foreground group-hover:text-accent transition-colors">
                             {submission.title}
                           </h3>
-                          <span className="bg-accent/10 text-accent px-2 py-1 rounded-full text-xs font-medium">
-                            Pending
-                          </span>
+                          <Badge tone="accent">Pending</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                           {submission.description}
@@ -135,7 +133,6 @@ export default function TeacherDashboard() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span>Student: {submission.studentName}</span>
                           <span>Submitted: {submission.submittedAt.toLocaleDateString()}</span>
-                          <span>File: {submission.fileName}</span>
                         </div>
                       </div>
                       <div className="ml-4">
@@ -147,20 +144,20 @@ export default function TeacherDashboard() {
                   </Link>
                 ))}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* All Submissions */}
-        <div className="bg-card border border-border rounded-lg">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <Assignment />
               All Submissions
-            </h2>
-          </div>
+            </CardTitle>
+          </CardHeader>
 
-          <div className="p-6">
+          <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner size="lg" />
@@ -183,15 +180,9 @@ export default function TeacherDashboard() {
                     <div className="flex-1">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-medium text-foreground">{submission.title}</h3>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            submission.status === 'graded'
-                              ? 'bg-action/10 text-action'
-                              : 'bg-accent/10 text-accent'
-                          }`}
-                        >
+                        <Badge tone={submission.status === 'graded' ? 'action' : 'accent'}>
                           {submission.status === 'graded' ? 'Graded' : 'Pending'}
-                        </span>
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                         {submission.description}
@@ -207,20 +198,18 @@ export default function TeacherDashboard() {
                           {submission.grade}/100
                         </span>
                       )}
-                      <Link
-                        href={`/grade/${submission.id}`}
-                        className="bg-primary text-primary-foreground px-3 py-1 rounded-md text-sm hover:bg-primary/90 transition-colors"
-                      >
-                        {submission.status === 'graded' ? 'Review' : 'Grade'}
+                      <Link href={`/grade/${submission.id}`}>
+                        <Button size="sm" variant="primary">
+                          {submission.status === 'graded' ? 'Review' : 'Grade'}
+                        </Button>
                       </Link>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </CardContent>
+        </Card>
+    </AppShell>
   );
 }

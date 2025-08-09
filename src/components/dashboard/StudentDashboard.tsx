@@ -1,13 +1,17 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigation } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Submission } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Add, Assignment, Grade, Pending } from '@mui/icons-material';
 
 export default function StudentDashboard() {
@@ -46,37 +50,37 @@ export default function StudentDashboard() {
   const gradedSubmissions = submissions.filter(s => s.status === 'graded');
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome back, {user?.fullName}!
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your project submissions and track your progress.
-          </p>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Link
-            href="/submissions/new"
-            className="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-action rounded-lg group-hover:scale-110 transition-transform">
-                <Add className="text-action-foreground" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-card-foreground">New Submission</h3>
-                <p className="text-sm text-muted-foreground">Submit a new project</p>
-              </div>
-            </div>
+    <AppShell>
+      <PageHeader
+        title={`Welcome back, ${user?.fullName}!`}
+        subtitle="Manage your project submissions and track your progress."
+        actions={(
+          <Link href="/submissions/new">
+            <Button variant="action" leftIcon={<Add />}>New Submission</Button>
           </Link>
+        )}
+      />
 
-          <div className="bg-card border border-border rounded-lg p-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Link href="/submissions/new" className="group">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-action rounded-lg group-hover:scale-110 transition-transform">
+                  <Add className="text-action-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-card-foreground">New Submission</h3>
+                  <p className="text-sm text-muted-foreground">Submit a new project</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-accent rounded-lg">
                 <Pending className="text-accent-foreground" />
@@ -86,9 +90,11 @@ export default function StudentDashboard() {
                 <p className="text-2xl font-bold text-accent">{pendingSubmissions.length}</p>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="bg-card border border-border rounded-lg p-6">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-action rounded-lg">
                 <Grade className="text-action-foreground" />
@@ -98,27 +104,23 @@ export default function StudentDashboard() {
                 <p className="text-2xl font-bold text-action">{gradedSubmissions.length}</p>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Recent Submissions */}
-        <div className="bg-card border border-border rounded-lg">
-          <div className="p-6 border-b border-border">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
-                <Assignment />
-                Recent Submissions
-              </h2>
-              <Link
-                href="/submissions"
-                className="text-primary hover:text-primary/80 text-sm font-medium"
-              >
-                View all
-              </Link>
-            </div>
-          </div>
+      {/* Recent Submissions */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Assignment />
+            Recent Submissions
+          </CardTitle>
+          <Link href="/submissions" className="text-primary hover:text-primary/80 text-sm font-medium">
+            View all
+          </Link>
+        </CardHeader>
 
-          <div className="p-6">
+        <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner size="lg" />
@@ -130,12 +132,8 @@ export default function StudentDashboard() {
                 <p className="text-muted-foreground mb-4">
                   Start by creating your first project submission.
                 </p>
-                <Link
-                  href="/submissions/new"
-                  className="inline-flex items-center gap-2 bg-action text-action-foreground px-4 py-2 rounded-md hover:bg-action/90 transition-colors"
-                >
-                  <Add />
-                  New Submission
+                <Link href="/submissions/new">
+                  <Button variant="action" leftIcon={<Add />}>New Submission</Button>
                 </Link>
               </div>
             ) : (
@@ -155,15 +153,9 @@ export default function StudentDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          submission.status === 'graded'
-                            ? 'bg-action/10 text-action'
-                            : 'bg-accent/10 text-accent'
-                        }`}
-                      >
+                      <Badge tone={submission.status === 'graded' ? 'action' : 'accent'}>
                         {submission.status === 'graded' ? 'Graded' : 'Pending'}
-                      </span>
+                      </Badge>
                       {submission.grade && (
                         <span className="text-lg font-bold text-action">
                           {submission.grade}/100
@@ -174,9 +166,8 @@ export default function StudentDashboard() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </AppShell>
   );
 }

@@ -4,6 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import AuthShell from '@/components/AuthShell';
+import { Label } from '@/components/ui/Label';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 export default function ProfileSetupPage() {
   const { user, completeProfile } = useAuth();
@@ -26,21 +30,17 @@ export default function ProfileSetupPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-card border border-border rounded-lg p-8 shadow-sm">
-          <h1 className="text-2xl font-semibold text-card-foreground mb-6 text-center">Complete Your Profile</h1>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">Full Name</label>
-              <input className="w-full px-3 py-2 border border-border rounded-md bg-background"
-                value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-            </div>
-            <button disabled={saving} className="w-full bg-action text-action-foreground py-2 rounded-md">
-              {saving ? 'Saving...' : 'Save and Continue'}
-            </button>
-          </form>
-        </div>
-      </div>
+      <AuthShell title="Complete Your Profile">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <Label className="mb-1">Full Name</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          </div>
+          <Button disabled={saving} variant="action" fullWidth>
+            {saving ? 'Saving...' : 'Save and Continue'}
+          </Button>
+        </form>
+      </AuthShell>
     </ProtectedRoute>
   );
 }

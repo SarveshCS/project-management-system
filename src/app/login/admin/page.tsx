@@ -4,6 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import AuthShell from '@/components/AuthShell';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Button } from '@/components/ui/Button';
 
 export default function AdminLoginPage() {
   const { user, loading, signInWithEmail, resetPassword } = useAuth();
@@ -50,54 +54,47 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-8">
-      <div className="w-full max-w-md bg-card border border-border rounded-lg p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-card-foreground mb-6 text-center">Admin Sign In</h1>
+    <AuthShell title="Admin Sign In">
+      {resetMode ? (
+        <form onSubmit={onReset} className="space-y-4">
+          <div>
+            <Label className="mb-1">Email</Label>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+          </div>
+          <Button disabled={submitting} variant="action" fullWidth>
+            {submitting ? 'Sending...' : 'Send Password Reset Email'}
+          </Button>
+          <Button type="button" onClick={() => setResetMode(false)} variant="ghost" fullWidth>
+            Back to Sign In
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <Label className="mb-1">Email</Label>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+          </div>
+          <div>
+            <Label className="mb-1">Password</Label>
+            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+          </div>
+          <Button disabled={submitting} variant="action" fullWidth>
+            {submitting ? 'Signing in...' : 'Sign In'}
+          </Button>
+          <Button type="button" onClick={() => setResetMode(true)} variant="ghost" fullWidth>
+            Forgot password?
+          </Button>
+        </form>
+      )}
 
-        {resetMode ? (
-          <form onSubmit={onReset} className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">Email</label>
-              <input className="w-full px-3 py-2 border border-border rounded-md bg-background"
-                value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-            </div>
-            <button disabled={submitting} className="w-full bg-action text-action-foreground py-2 rounded-md">
-              {submitting ? 'Sending...' : 'Send Password Reset Email'}
-            </button>
-            <button type="button" onClick={() => setResetMode(false)} className="w-full mt-2 text-sm text-primary">
-              Back to Sign In
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">Email</label>
-              <input className="w-full px-3 py-2 border border-border rounded-md bg-background"
-                value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Password</label>
-              <input className="w-full px-3 py-2 border border-border rounded-md bg-background"
-                value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
-            </div>
-            <button disabled={submitting} className="w-full bg-action text-action-foreground py-2 rounded-md">
-              {submitting ? 'Signing in...' : 'Sign In'}
-            </button>
-            <button type="button" onClick={() => setResetMode(true)} className="w-full mt-2 text-sm text-primary">
-              Forgot password?
-            </button>
-          </form>
-        )}
-
-        <div className="mt-6 space-y-1">
-          <button onClick={() => router.push('/login/student')} className="w-full text-sm text-primary">
-            Sign in as Student
-          </button>
-          <button onClick={() => router.push('/login/teacher')} className="w-full text-sm text-primary">
-            Sign in as Teacher
-          </button>
-        </div>
+      <div className="mt-6 space-y-1">
+        <Button onClick={() => router.push('/login/student')} type="button" variant="outline" fullWidth>
+          Sign in as Student
+        </Button>
+        <Button onClick={() => router.push('/login/teacher')} type="button" variant="outline" fullWidth>
+          Sign in as Teacher
+        </Button>
       </div>
-    </div>
+    </AuthShell>
   );
 }

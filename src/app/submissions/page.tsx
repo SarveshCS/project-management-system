@@ -1,7 +1,7 @@
 'use client';
 
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { Navigation } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
@@ -9,6 +9,10 @@ import { db } from '@/lib/firebase';
 import { Submission } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { Add, Assignment, Grade, Pending, Link as LinkIcon, Visibility } from '@mui/icons-material';
 
 export default function SubmissionsPage() {
@@ -45,54 +49,41 @@ export default function SubmissionsPage() {
 
   return (
     <ProtectedRoute allowedRoles={['student']}>
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">My Submissions</h1>
-              <p className="text-muted-foreground">
-                Track the status of your project submissions.
-              </p>
-            </div>
-            <Link
-              href="/submissions/new"
-              className="bg-action text-action-foreground px-4 py-2 rounded-md hover:bg-action/90 transition-colors flex items-center gap-2"
-            >
-              <Add />
-              New Submission
+      <AppShell>
+        <PageHeader
+          title="My Submissions"
+          subtitle="Track the status of your project submissions."
+          actions={(
+            <Link href="/submissions/new">
+              <Button variant="action" leftIcon={<Add />}>New Submission</Button>
             </Link>
-          </div>
+          )}
+        />
 
-          <div className="bg-card border border-border rounded-lg">
+        <Card>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <LoadingSpinner size="lg" />
               </div>
             ) : submissions.length === 0 ? (
-              <div className="text-center py-12">
+            <CardContent className="text-center py-12">
                 <Assignment className="mx-auto text-muted-foreground mb-4" style={{ fontSize: 64 }} />
                 <h3 className="text-xl font-semibold text-foreground mb-2">No submissions yet</h3>
                 <p className="text-muted-foreground mb-6">
                   Start by creating your first project submission.
                 </p>
-                <Link
-                  href="/submissions/new"
-                  className="inline-flex items-center gap-2 bg-action text-action-foreground px-6 py-3 rounded-md hover:bg-action/90 transition-colors"
-                >
-                  <Add />
-                  Create Your First Submission
-                </Link>
-              </div>
+              <Link href="/submissions/new">
+                <Button variant="action" leftIcon={<Add />}>Create Your First Submission</Button>
+              </Link>
+            </CardContent>
             ) : (
-              <div className="divide-y divide-border">
+            <div className="divide-y divide-border">
                 {submissions.map((submission) => {
                   const hasDrive = !!submission.driveLink;
                   const linkHref = hasDrive ? submission.driveLink! : submission.fileUrl;
                   const linkLabel = hasDrive ? (submission.linkTitle || submission.driveLink) : submission.fileName;
                   return (
-                    <div key={submission.id} className="p-6 hover:bg-muted/30 transition-colors">
+                    <CardContent key={submission.id} className="p-6 hover:bg-muted/30 transition-colors">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start gap-4">
@@ -112,15 +103,9 @@ export default function SubmissionsPage() {
                                   {submission.title}
                                 </h3>
                                 <div className="flex items-center gap-3 ml-4">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                      submission.status === 'graded'
-                                        ? 'bg-action/10 text-action'
-                                        : 'bg-accent/10 text-accent'
-                                    }`}
-                                  >
-                                    {submission.status === 'graded' ? 'Graded' : 'Pending Review'}
-                                  </span>
+                                    <Badge tone={submission.status === 'graded' ? 'action' : 'accent'}>
+                                      {submission.status === 'graded' ? 'Graded' : 'Pending Review'}
+                                    </Badge>
                                   {submission.grade !== undefined && (
                                     <div className="text-right">
                                       <div className="text-2xl font-bold text-action">
@@ -175,14 +160,13 @@ export default function SubmissionsPage() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </CardContent>
                   );
                 })}
               </div>
             )}
-          </div>
-        </div>
-      </div>
+        </Card>
+      </AppShell>
     </ProtectedRoute>
   );
 }

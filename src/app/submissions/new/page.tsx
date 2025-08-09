@@ -1,7 +1,7 @@
 'use client';
 
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { Navigation } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,13 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Link as LinkIcon, Assignment } from '@mui/icons-material';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Select } from '@/components/ui/Select';
+import { Label } from '@/components/ui/Label';
+import { Button } from '@/components/ui/Button';
 
 const submissionSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title must be less than 100 characters'),
@@ -94,30 +101,20 @@ export default function NewSubmissionPage() {
 
   return (
     <ProtectedRoute allowedRoles={['student']}>
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">New Project Submission</h1>
-            <p className="text-muted-foreground">
-              Submit your project for review and grading.
-            </p>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-8">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <AppShell>
+        <div className="max-w-4xl">
+          <PageHeader title="New Project Submission" subtitle="Submit your project for review and grading." />
+          <Card>
+            <CardContent className="p-8">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <fieldset disabled={isSubmitting}>
                 {/* Project Title */}
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-card-foreground mb-2">
-                    Project Title *
-                  </label>
-                  <input
+                  <Label htmlFor="title" className="mb-2">Project Title *</Label>
+                  <Input
                     {...register('title')}
                     type="text"
                     id="title"
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                     placeholder="Enter your project title"
                   />
                   {errors.title && (
@@ -127,14 +124,11 @@ export default function NewSubmissionPage() {
 
                 {/* Project Description */}
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-card-foreground mb-2">
-                    Project Description *
-                  </label>
-                  <textarea
+                  <Label htmlFor="description" className="mb-2">Project Description *</Label>
+                  <Textarea
                     {...register('description')}
                     id="description"
                     rows={4}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                     placeholder="Describe your project, its objectives, and key features"
                   />
                   {errors.description && (
@@ -144,19 +138,16 @@ export default function NewSubmissionPage() {
 
                 {/* Assign to Teacher */}
                 <div>
-                  <label htmlFor="assignedTeacherUid" className="block text-sm font-medium text-card-foreground mb-2">
-                    Assign to Teacher *
-                  </label>
+                  <Label htmlFor="assignedTeacherUid" className="mb-2">Assign to Teacher *</Label>
                   {loadingTeachers ? (
                     <div className="flex items-center gap-2 py-2">
                       <LoadingSpinner size="sm" />
                       <span className="text-muted-foreground">Loading teachers...</span>
                     </div>
                   ) : (
-                    <select
+                    <Select
                       {...register('assignedTeacherUid')}
                       id="assignedTeacherUid"
-                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                     >
                       <option value="">Select a teacher</option>
                       {teachers.map((teacher) => (
@@ -164,7 +155,7 @@ export default function NewSubmissionPage() {
                           {teacher.fullName} ({teacher.email})
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   )}
                   {errors.assignedTeacherUid && (
                     <p className="text-destructive text-sm mt-1">{errors.assignedTeacherUid.message}</p>
@@ -173,15 +164,12 @@ export default function NewSubmissionPage() {
 
                 {/* Google Drive Link */}
                 <div>
-                  <label htmlFor="driveLink" className="block text-sm font-medium text-card-foreground mb-2">
-                    Google Drive Link *
-                  </label>
+                  <Label htmlFor="driveLink" className="mb-2">Google Drive Link *</Label>
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       {...register('driveLink')}
                       type="url"
                       id="driveLink"
-                      className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                       placeholder="https://drive.google.com/..."
                     />
                     <span className="inline-flex items-center px-3 rounded-md bg-muted text-muted-foreground">
@@ -195,14 +183,11 @@ export default function NewSubmissionPage() {
 
                 {/* Optional Link Title */}
                 <div>
-                  <label htmlFor="linkTitle" className="block text-sm font-medium text-card-foreground mb-2">
-                    Link Title (optional)
-                  </label>
-                  <input
+                  <Label htmlFor="linkTitle" className="mb-2">Link Title (optional)</Label>
+                  <Input
                     {...register('linkTitle')}
                     type="text"
                     id="linkTitle"
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                     placeholder="e.g., Research_Paper_v1.pdf"
                   />
                   {errors.linkTitle && (
@@ -212,10 +197,11 @@ export default function NewSubmissionPage() {
 
                 {/* Submit Button */}
                 <div className="flex gap-4 pt-6">
-                  <button
+                  <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 bg-action text-action-foreground py-3 px-6 rounded-md font-medium hover:bg-action/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1"
+                    variant="action"
                   >
                     {isSubmitting ? (
                       <>
@@ -228,22 +214,23 @@ export default function NewSubmissionPage() {
                         Submit Project
                       </>
                     )}
-                  </button>
+                  </Button>
                   
-                  <button
+                  <Button
                     type="button"
                     onClick={() => router.back()}
                     disabled={isSubmitting}
-                    className="px-6 py-3 border border-border text-foreground rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+                    variant="outline"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             </form>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </AppShell>
     </ProtectedRoute>
   );
 }

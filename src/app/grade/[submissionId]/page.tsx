@@ -1,7 +1,7 @@
 'use client';
 
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { Navigation } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -22,6 +22,11 @@ import {
   ArrowBack 
 } from '@mui/icons-material';
 import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Label } from '@/components/ui/Label';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Button } from '@/components/ui/Button';
 
 const gradeSchema = z.object({
   grade: z.number().min(0, 'Grade must be at least 0').max(100, 'Grade must be at most 100'),
@@ -141,12 +146,11 @@ export default function GradingPage() {
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={['teacher']}>
-        <div className="min-h-screen bg-background">
-          <Navigation />
+        <AppShell>
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner size="lg" />
           </div>
-        </div>
+        </AppShell>
       </ProtectedRoute>
     );
   }
@@ -157,10 +161,8 @@ export default function GradingPage() {
 
   return (
     <ProtectedRoute allowedRoles={['teacher']}>
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <AppShell>
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <Link
@@ -179,11 +181,11 @@ export default function GradingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Submission Details - Left Column */}
             <div className="space-y-6">
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-card-foreground mb-4 flex items-center gap-2">
-                  <Assignment />
-                  Submission Details
-                </h2>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Assignment /> Submission Details</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
 
                 <div className="space-y-4">
                   <div>
@@ -231,14 +233,8 @@ export default function GradingPage() {
                   </div>
 
                   <div className="pt-4">
-                    <a
-                      href={submission.driveLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-                    >
-                      <LinkIcon />
-                      Open Drive Link
+                    <a href={submission.driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2">
+                      <Button size="sm" variant="primary" leftIcon={<LinkIcon />}>Open Drive Link</Button>
                     </a>
                   </div>
 
@@ -260,32 +256,30 @@ export default function GradingPage() {
                     </div>
                   )}
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Grading Form - Right Column */}
             <div className="space-y-6">
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
-                  <Grade />
-                  {submission.status === 'graded' ? 'Update Grade' : 'Assign Grade'}
-                </h2>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Grade /> {submission.status === 'graded' ? 'Update Grade' : 'Assign Grade'}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   <fieldset disabled={isSubmitting}>
                     {/* Grade Input */}
                     <div>
-                      <label htmlFor="grade" className="block text-sm font-medium text-card-foreground mb-2">
-                        Grade (0-100) *
-                      </label>
-                      <input
+                      <Label htmlFor="grade" className="mb-2">Grade (0-100) *</Label>
+                      <Input
                         {...register('grade', { valueAsNumber: true })}
                         type="number"
                         id="grade"
                         min="0"
                         max="100"
                         step="1"
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                         placeholder="Enter grade (0-100)"
                       />
                       {errors.grade && (
@@ -295,14 +289,11 @@ export default function GradingPage() {
 
                     {/* Feedback Textarea */}
                     <div>
-                      <label htmlFor="feedback" className="block text-sm font-medium text-card-foreground mb-2">
-                        Feedback *
-                      </label>
-                      <textarea
+                      <Label htmlFor="feedback" className="mb-2">Feedback *</Label>
+                      <Textarea
                         {...register('feedback')}
                         id="feedback"
                         rows={8}
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                         placeholder="Provide detailed feedback on the student's work, including strengths, areas for improvement, and suggestions for future projects..."
                       />
                       {errors.feedback && (
@@ -312,10 +303,11 @@ export default function GradingPage() {
 
                     {/* Submit Buttons */}
                     <div className="flex gap-4 pt-6">
-                      <button
+                      <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex-1 bg-action text-action-foreground py-3 px-6 rounded-md font-medium hover:bg-action/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-1"
+                        variant="action"
                       >
                         {isSubmitting ? (
                           <>
@@ -328,24 +320,25 @@ export default function GradingPage() {
                             {submission.status === 'graded' ? 'Update Grade' : 'Submit Grade'}
                           </>
                         )}
-                      </button>
+                      </Button>
                       
-                      <button
+                      <Button
                         type="button"
                         onClick={() => router.push('/dashboard')}
                         disabled={isSubmitting}
-                        className="px-6 py-3 border border-border text-foreground rounded-md hover:bg-muted transition-colors disabled:opacity-50"
+                        variant="outline"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </fieldset>
                 </form>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
-      </div>
+      </AppShell>
     </ProtectedRoute>
   );
 }

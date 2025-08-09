@@ -1,7 +1,7 @@
 'use client';
 
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { Navigation } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -20,6 +20,9 @@ import {
   CheckCircle 
 } from '@mui/icons-material';
 import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 
 export default function SubmissionDetailsPage() {
   const { user } = useAuth();
@@ -69,12 +72,11 @@ export default function SubmissionDetailsPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-background">
-          <Navigation />
+        <AppShell>
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner size="lg" />
           </div>
-        </div>
+        </AppShell>
       </ProtectedRoute>
     );
   }
@@ -89,10 +91,8 @@ export default function SubmissionDetailsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <AppShell>
+        <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <Link
@@ -107,31 +107,16 @@ export default function SubmissionDetailsPage() {
 
           <div className="space-y-6">
             {/* Status Header */}
-            <div className="bg-card border border-border rounded-lg p-6">
+            <Card>
+              <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold text-card-foreground">
                   {submission.title}
                 </h2>
                 <div className="flex items-center gap-4">
-                  <span
-                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium ${
-                      submission.status === 'graded'
-                        ? 'bg-action/10 text-action'
-                        : 'bg-accent/10 text-accent'
-                    }`}
-                  >
-                    {submission.status === 'graded' ? (
-                      <>
-                        <CheckCircle />
-                        Graded
-                      </>
-                    ) : (
-                      <>
-                        <Pending />
-                        Pending Review
-                      </>
-                    )}
-                  </span>
+                  <Badge tone={submission.status === 'graded' ? 'action' : 'accent'} className="flex items-center gap-2">
+                    {submission.status === 'graded' ? (<><CheckCircle /> Graded</>) : (<><Pending /> Pending Review</>)}
+                  </Badge>
                   {submission.grade !== undefined && (
                     <div className="text-right">
                       <div className="text-3xl font-bold text-action">
@@ -146,14 +131,15 @@ export default function SubmissionDetailsPage() {
               <p className="text-muted-foreground text-lg">
                 {submission.description}
               </p>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Submission Info */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
-                <Assignment />
-                Submission Information
-              </h3>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Assignment /> Submission Information</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
@@ -193,33 +179,28 @@ export default function SubmissionDetailsPage() {
                       >
                         {linkLabel}
                       </a>
-                      <a
-                        href={linkHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors text-sm"
-                      >
-                        <LinkIcon />
-                        {hasDrive ? 'Open Link' : 'Open File'}
+                      <a href={linkHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2">
+                        <Button size="sm" variant="primary" leftIcon={<LinkIcon />}>{hasDrive ? 'Open Link' : 'Open File'}</Button>
                       </a>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Feedback Section */}
             {submission.feedback && (
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
-                  <Grade />
-                  Teacher Feedback
-                </h3>
-                
-                <div className="bg-muted/50 rounded-lg p-4 border border-border">
-                  <p className="text-foreground whitespace-pre-wrap">{submission.feedback}</p>
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Grade /> Teacher Feedback</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                    <p className="text-foreground whitespace-pre-wrap">{submission.feedback}</p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Status Message */}
@@ -237,7 +218,7 @@ export default function SubmissionDetailsPage() {
             )}
           </div>
         </div>
-      </div>
+      </AppShell>
     </ProtectedRoute>
   );
 }
