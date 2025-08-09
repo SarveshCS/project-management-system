@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const normalizeAllowedDomain = (value?: string) => {
   const v = (value || '').trim();
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
   const externalId: string | undefined = body.externalId?.trim() || undefined;
   const batch: string | undefined = body.batch?.trim() || undefined;
   const course: string | undefined = body.course?.trim() || undefined;
+  const branch: string | undefined = body.branch?.trim() || undefined;
   const title: string | undefined = body.title?.trim() || undefined;
 
     if (!email || !fullName || !role || !tempPassword) {
@@ -75,11 +77,12 @@ export async function POST(req: NextRequest) {
       department,
       phone,
       externalId,
-      batch: role === 'student' ? batch : undefined,
-      course: role === 'student' ? course : undefined,
+  batch: role === 'student' ? batch : undefined,
+  course: role === 'student' ? course : undefined,
+  branch: role === 'student' ? branch : undefined,
       title: role === 'teacher' ? title : undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({ success: true, uid: userRecord.uid, role, email, fullName }, { status: 201 });

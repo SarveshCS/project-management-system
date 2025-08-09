@@ -10,7 +10,8 @@ export interface User {
   externalId?: string; // employee or student ID
   // Student-only
   batch?: string;
-  course?: string;
+  course?: string; // e.g., B.Tech, BCA, BSc
+  branch?: string; // e.g., CSE, ECE, ME
   // Teacher-only
   title?: string; // Professor, Assistant Professor, Dr., etc.
   // Timestamps (may be Date or Firestore Timestamp serialized)
@@ -23,7 +24,8 @@ export interface Submission {
   title: string;
   description: string;
   status: 'pending' | 'graded';
-  submittedAt: Date;
+  // Firestore Timestamp or Date; client code generally converts to Date for display
+  submittedAt: Date | { toDate: () => Date } | string | number;
   studentUid: string;
   studentName: string;
   assignedTeacherUid: string;
@@ -35,7 +37,7 @@ export interface Submission {
   fileName?: string;
   grade?: number;
   feedback?: string;
-  gradedAt?: Date;
+  gradedAt?: Date | { toDate: () => Date } | string | number;
   gradedBy?: string;
 }
 

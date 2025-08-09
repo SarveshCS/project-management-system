@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/Label';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
+import { formatDateTime, toDate } from '@/lib/date';
 
 const gradeSchema = z.object({
   grade: z.number().min(0, 'Grade must be at least 0').max(100, 'Grade must be at most 100'),
@@ -69,7 +70,7 @@ export default function GradingPage() {
         const submissionData = {
           id: submissionDoc.id,
           ...submissionDoc.data(),
-          submittedAt: submissionDoc.data()?.submittedAt.toDate(),
+          submittedAt: toDate(submissionDoc.data()?.submittedAt),
         } as Submission;
 
         // Verify teacher is assigned to this submission
@@ -208,13 +209,7 @@ export default function GradingPage() {
                       <DateRange className="text-muted-foreground" />
                       <span className="text-muted-foreground">Submitted:</span>
                       <span className="font-medium text-foreground">
-                        {submission.submittedAt.toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatDateTime(submission.submittedAt, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
 

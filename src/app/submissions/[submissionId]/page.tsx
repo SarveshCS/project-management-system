@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { formatDateTime, toDate } from '@/lib/date';
 
 export default function SubmissionDetailsPage() {
   const { user } = useAuth();
@@ -46,7 +47,7 @@ export default function SubmissionDetailsPage() {
         const submissionData = {
           id: submissionDoc.id,
           ...submissionDoc.data(),
-          submittedAt: submissionDoc.data()?.submittedAt.toDate(),
+          submittedAt: toDate(submissionDoc.data()?.submittedAt),
         } as Submission;
 
         // Verify user owns this submission (for students)
@@ -154,15 +155,7 @@ export default function SubmissionDetailsPage() {
                   <DateRange className="text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Submitted</p>
-                    <p className="font-medium text-foreground">
-                      {submission.submittedAt.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
+                    <p className="font-medium text-foreground">{formatDateTime(submission.submittedAt, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
 

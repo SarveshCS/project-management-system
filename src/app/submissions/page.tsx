@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Add, Assignment, Grade, Pending, Link as LinkIcon, Visibility } from '@mui/icons-material';
+import { formatDate } from '@/lib/date';
 
 export default function SubmissionsPage() {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ export default function SubmissionsPage() {
         const submissionsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          submittedAt: doc.data().submittedAt.toDate(),
+          submittedAt: doc.data().submittedAt,
         })) as Submission[];
         setSubmissions(submissionsData);
       } catch (error) {
@@ -125,11 +126,7 @@ export default function SubmissionsPage() {
                                 <div className="flex items-center gap-1">
                                   <span>Submitted:</span>
                                   <span className="font-medium">
-                                    {submission.submittedAt.toLocaleDateString('en-US', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })}
+                                    {formatDate(submission.submittedAt, { year: 'numeric', month: 'short', day: 'numeric' })}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">

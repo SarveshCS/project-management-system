@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Add, Assignment, Grade, Pending } from '@mui/icons-material';
+import { formatDate, toDate } from '@/lib/date';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function StudentDashboard() {
         const submissionsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          submittedAt: doc.data().submittedAt.toDate(),
+          submittedAt: toDate(doc.data().submittedAt),
         })) as Submission[];
         setSubmissions(submissionsData);
       } catch (error) {
@@ -149,7 +150,7 @@ export default function StudentDashboard() {
                         {submission.description}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Submitted {submission.submittedAt.toLocaleDateString()}
+                        Submitted {formatDate(submission.submittedAt)}
                       </p>
                     </div>
                     <div className="flex items-center gap-4">

@@ -18,7 +18,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/login/student');
+        router.push('/login');
         return;
       }
 

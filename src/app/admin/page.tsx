@@ -10,22 +10,13 @@ import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useAuth } from '@/contexts/AuthContext';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { db } from '@/lib/firebase';
-import { collection, getCountFromServer, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { collection, getCountFromServer, getDocs, limit, orderBy, query, where, startAfter, DocumentSnapshot, QueryConstraint, startAt, endAt } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+ 
 
-const normalizeAllowedDomain = (value?: string) => {
-  const v = (value || '').trim();
-  if (!v) return '';
-  const lower = v.toLowerCase();
-  return lower === 'false' || lower === '0' || lower === 'no' ? '' : v;
-};
-
-const allowedDomain = normalizeAllowedDomain(
-  process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN || process.env.ALLOWED_EMAIL_DOMAIN
-);
+// Admin dashboard shows high level stats and a one time users list fetch
 
 type Stats = {
   students: number;
@@ -36,7 +27,6 @@ type Stats = {
 };
 
 export default function AdminPage() {
-  const { getAuthToken } = useAuth();
 
   const [stats, setStats] = useState<Stats>({
     students: 0,
@@ -45,19 +35,19 @@ export default function AdminPage() {
     submissions: 0,
     pending: 0,
   });
-
-  const [email, setEmail] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'student' | 'teacher'>('student');
-  const [tempPassword, setTempPassword] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [department, setDepartment] = useState('');
-  const [phone, setPhone] = useState('');
-  const [externalId, setExternalId] = useState('');
   type Recent = { id: string; title: string; studentName: string; status: 'pending' | 'graded'; submittedAt?: Date };
-  type UserRow = { uid: string; fullName: string; email: string; role: 'student' | 'teacher' | 'admin' };
+  type UserRow = { uid: string; fullName: string; email: string; role: 'student' | 'teacher' | 'admin'; department?: string };
   const [recentSubmissions, setRecentSubmissions] = useState<Recent[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [usersLoading, setUsersLoading] = useState<boolean>(false);
+  const [search, setSearch] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('');
+  const [departments, setDepartments] = useState<string[]>([]);
+  const pageSize = 20;
+  const [pageIndex, setPageIndex] = useState<number>(0);
+  const [pageStarts, setPageStarts] = useState<Array<DocumentSnapshot | null>>([null]);
+  const [hasNextPage, setHasNextPage] = useState<boolean>(false);
 
   const fetchStats = useCallback(async () => {
       try {
@@ -92,12 +82,19 @@ export default function AdminPage() {
         const snap = await getDocs(q);
         const rec = snap.docs.map((d) => {
           const data = d.data() as Partial<Recent> & Record<string, unknown>;
+          const rawSubmittedAt = (data as { submittedAt?: unknown }).submittedAt;
+          let parsedDate: Date | undefined = undefined;
+          if (rawSubmittedAt && typeof (rawSubmittedAt as { toDate?: unknown }).toDate === 'function') {
+            parsedDate = (rawSubmittedAt as { toDate: () => Date }).toDate();
+          } else if (rawSubmittedAt) {
+            parsedDate = new Date(String(rawSubmittedAt));
+          }
           return {
             id: d.id,
             title: String(data.title || ''),
             studentName: String(data.studentName || ''),
             status: (data.status === 'graded' ? 'graded' : 'pending') as Recent['status'],
-            submittedAt: data.submittedAt ? new Date(String(data.submittedAt)) : undefined,
+            submittedAt: parsedDate,
           } satisfies Recent;
         });
         setRecentSubmissions(rec);
@@ -105,66 +102,90 @@ export default function AdminPage() {
         console.error('Failed to load recent submissions', e);
       }
   }, []);
-  const fetchUsers = useCallback(async () => {
-      try {
-        const snap = await getDocs(query(collection(db, 'users'), orderBy('fullName'), limit(20)));
-        const list = snap.docs.map((d) => {
-          const data = d.data() as Partial<UserRow> & Record<string, unknown>;
-          return {
-            uid: d.id,
-            fullName: String(data.fullName || ''),
-            email: String(data.email || ''),
-            role: (data.role === 'teacher' || data.role === 'admin' ? data.role : 'student') as UserRow['role'],
-          } satisfies UserRow;
-        });
-        setUsers(list);
-    } catch (e) {
-        console.error('Failed to load users', e);
-      }
-  }, []);
-  useEffect(() => { fetchStats(); fetchRecent(); fetchUsers(); }, [fetchStats, fetchRecent, fetchUsers]);
+  const buildUserQuery = useCallback((startAfterDoc?: DocumentSnapshot | null) => {
+    const constraints: QueryConstraint[] = [];
+    // Equality filters
+    if (roleFilter !== 'all') constraints.push(where('role', '==', roleFilter));
+    if (deptFilter) constraints.push(where('department', '==', deptFilter));
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (allowedDomain && !email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
-      toast.error(`Only ${allowedDomain} emails are allowed`);
-      return;
+    // Order and optional search prefix on fullName
+    const term = search.trim();
+    constraints.push(orderBy('fullName'));
+    if (term) {
+      constraints.push(startAt(term));
+      constraints.push(endAt(term + '\uf8ff'));
     }
 
-    setCreating(true);
+    if (startAfterDoc) constraints.push(startAfter(startAfterDoc));
+    constraints.push(limit(pageSize));
+    return query(collection(db, 'users'), ...constraints);
+  }, [deptFilter, roleFilter, search]);
+
+  const fetchUsersPage = useCallback(async (page: number) => {
+    setUsersLoading(true);
     try {
-      const token = await getAuthToken();
-      if (!token) throw new Error('Not authenticated');
-
-      const res = await fetch('/api/admin/create-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ email, fullName, role, tempPassword, department, phone, externalId }),
+      const startDoc = page > 0 ? pageStarts[page] ?? null : null;
+      const q = buildUserQuery(startDoc);
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d) => {
+        const data = d.data() as Partial<UserRow> & Record<string, unknown>;
+        return {
+          uid: d.id,
+          fullName: String(data.fullName || ''),
+          email: String(data.email || ''),
+          role: (data.role === 'teacher' || data.role === 'admin' ? data.role : 'student') as UserRow['role'],
+          department: data.department ? String(data.department) : undefined,
+        } satisfies UserRow;
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create user');
-
-  toast.success('User created');
-  setEmail('');
-  setFullName('');
-  setTempPassword('');
-  setRole('student');
-  setDepartment('');
-  setPhone('');
-  setExternalId('');
-  await Promise.all([fetchStats(), fetchUsers()]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create user';
-      toast.error(message);
+      setUsers(list);
+      setPageIndex(page);
+      // Update pageStarts for next page navigation
+      if (list.length > 0) {
+        const newStarts = [...pageStarts];
+        newStarts[page + 1] = snap.docs[snap.docs.length - 1];
+        setPageStarts(newStarts);
+      }
+      setHasNextPage(snap.size === pageSize);
+    } catch (e) {
+      console.error('Failed to load users', e);
     } finally {
-      setCreating(false);
+      setUsersLoading(false);
     }
-  };
+  }, [buildUserQuery, pageStarts]);
+
+  const resetAndFetchUsers = useCallback(async () => {
+    setPageStarts([null]);
+    await fetchUsersPage(0);
+  }, [fetchUsersPage]);
+
+  // Load departments for filter options (best-effort)
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'users'), orderBy('department'), limit(100)));
+        const set = new Set<string>();
+        snap.docs.forEach((d) => {
+          const dep = (d.data() as Record<string, unknown>).department;
+          if (typeof dep === 'string' && dep.trim()) set.add(dep.trim());
+        });
+        setDepartments(Array.from(set).sort((a, b) => a.localeCompare(b)));
+      } catch (e) {
+        console.warn('Failed to load departments', e);
+      }
+    };
+    loadDepartments();
+  }, []);
+
+  // Manual fetch only when user clicks Apply or Refresh
+  // On mount, load initial stats, recent, and first users page once.
+  useEffect(() => {
+    fetchStats();
+    fetchRecent();
+    resetAndFetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Removed inline create user to keep admin overview focused
 
   const totalUsers = stats.students + stats.teachers + stats.admins;
 
@@ -220,79 +241,8 @@ export default function AdminPage() {
           </Card>
         </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Create User</CardTitle>
-            </CardHeader>
-            <CardContent>
-      <form className="space-y-5" onSubmit={onSubmit}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      placeholder="Jane Doe"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder={`jane@${allowedDomain || 'college.edu'}`}
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="role">Role</Label>
-                    <Select
-                      id="role"
-                      name="role"
-                      required
-                      value={role}
-                      onChange={(e) => setRole(e.target.value as 'student' | 'teacher')}
-                    >
-                      <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="password">Temporary Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="Minimum 8 characters"
-                      required
-                      value={tempPassword}
-                      onChange={(e) => setTempPassword(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Password will require change on first login.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button type="reset" variant="ghost" onClick={() => { setEmail(''); setFullName(''); setTempPassword(''); setRole('student'); }}>Clear</Button>
-                  <Button type="submit" variant="primary" disabled={creating}>
-                    {creating ? 'Creating...' : 'Create User'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card className="lg:col-span-3">
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
@@ -322,8 +272,47 @@ export default function AdminPage() {
               <CardTitle>Users</CardTitle>
             </CardHeader>
             <CardContent>
-              {users.length === 0 ? (
-                <EmptyState title="No users found" description="Users created will show up here." />
+              {/* Filters */}
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div className="md:col-span-2">
+                  <Label htmlFor="search">Search</Label>
+                  <Input
+                    id="search"
+                    placeholder="Search by name (prefix)"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="roleFilter">Role</Label>
+                  <Select id="roleFilter" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as 'all' | 'student' | 'teacher' | 'admin')}>
+                    <option value="all">All</option>
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="admin">Admin</option>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="deptFilter">Department</Label>
+                  <Select id="deptFilter" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+                    <option value="">All</option>
+                    {departments.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button variant="primary" disabled={usersLoading} onClick={() => resetAndFetchUsers()}>Apply</Button>
+                </div>
+              </div>
+
+              {/* Table */}
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner />
+                </div>
+              ) : users.length === 0 ? (
+                <EmptyState title="No users found" description="Adjust filters and select Apply or use Refresh." />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -332,6 +321,7 @@ export default function AdminPage() {
                         <th className="py-2 pr-4">Name</th>
                         <th className="py-2 pr-4">Email</th>
                         <th className="py-2 pr-4">Role</th>
+                        <th className="py-2 pr-4">Department</th>
                         <th className="py-2 pr-4">Action</th>
                       </tr>
                     </thead>
@@ -341,6 +331,7 @@ export default function AdminPage() {
                           <td className="py-2 pr-4 font-medium">{u.fullName}</td>
                           <td className="py-2 pr-4">{u.email}</td>
                           <td className="py-2 pr-4 capitalize">{u.role}</td>
+                          <td className="py-2 pr-4">{u.department || '-'}</td>
                           <td className="py-2 pr-4">
                             <a href={`/admin/users/${u.uid}`} className="text-primary hover:underline">View</a>
                           </td>
@@ -350,6 +341,28 @@ export default function AdminPage() {
                   </table>
                 </div>
               )}
+
+              {/* Pagination */}
+        <div className="flex items-center justify-between mt-4">
+                <div className="text-xs text-muted-foreground">Page {pageIndex + 1}</div>
+                <div className="flex gap-2">
+          <Button variant="outline" disabled={usersLoading} onClick={() => resetAndFetchUsers()}>Refresh</Button>
+                  <Button
+                    variant="outline"
+                    disabled={pageIndex === 0 || usersLoading}
+                    onClick={() => fetchUsersPage(Math.max(0, pageIndex - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!hasNextPage || usersLoading}
+                    onClick={() => fetchUsersPage(pageIndex + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

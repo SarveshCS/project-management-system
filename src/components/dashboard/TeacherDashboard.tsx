@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Grade, Assignment, CheckCircle, Pending } from '@mui/icons-material';
+import { formatDate, toDate } from '@/lib/date';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function TeacherDashboard() {
         const submissionsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          submittedAt: doc.data().submittedAt.toDate(),
+          submittedAt: toDate(doc.data().submittedAt),
         })) as Submission[];
         setSubmissions(submissionsData);
       } catch (error) {
@@ -132,7 +133,7 @@ export default function TeacherDashboard() {
                         </p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span>Student: {submission.studentName}</span>
-                          <span>Submitted: {submission.submittedAt.toLocaleDateString()}</span>
+                          <span>Submitted: {formatDate(submission.submittedAt)}</span>
                         </div>
                       </div>
                       <div className="ml-4">
@@ -189,7 +190,7 @@ export default function TeacherDashboard() {
                       </p>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span>Student: {submission.studentName}</span>
-                        <span>Submitted: {submission.submittedAt.toLocaleDateString()}</span>
+                        <span>Submitted: {formatDate(submission.submittedAt)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">

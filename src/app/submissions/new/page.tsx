@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { User } from '@/types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -52,7 +52,10 @@ export default function NewSubmissionPage() {
       try {
         const q = query(collection(db, 'users'), where('role', '==', 'teacher'));
         const querySnapshot = await getDocs(q);
-        const teachersData = querySnapshot.docs.map(doc => doc.data() as User);
+        const teachersData = querySnapshot.docs.map(doc => ({
+          ...(doc.data() as User),
+          uid: doc.id,
+        }));
         setTeachers(teachersData);
       } catch (error) {
         console.error('Error fetching teachers:', error);
@@ -79,7 +82,7 @@ export default function NewSubmissionPage() {
         title: data.title,
         description: data.description,
         status: 'pending' as const,
-        submittedAt: new Date(),
+        submittedAt: serverTimestamp(),
         studentUid: user.uid,
         studentName: user.fullName,
         assignedTeacherUid: data.assignedTeacherUid,
