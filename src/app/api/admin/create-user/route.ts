@@ -67,23 +67,32 @@ export async function POST(req: NextRequest) {
       disabled: false,
     });
 
-    // Create Firestore user doc
-    await adminDb.collection('users').doc(userRecord.uid).set({
+    // Build Firestore user doc without undefined values
+    const userDoc: Record<string, unknown> = {
       uid: userRecord.uid,
       email,
       fullName,
       role,
       profileCompleted: true,
-      department,
-      phone,
-      externalId,
-  batch: role === 'student' ? batch : undefined,
-  course: role === 'student' ? course : undefined,
-  branch: role === 'student' ? branch : undefined,
-      title: role === 'teacher' ? title : undefined,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+
+    if (department) userDoc.department = department;
+    if (phone) userDoc.phone = phone;
+    if (externalId) userDoc.externalId = externalId;
+
+    if (role === 'student') {
+      if (batch) userDoc.batch = batch;
+      if (course) userDoc.course = course;
+      if (branch) userDoc.branch = branch;
+    }
+
+    if (role === 'teacher') {
+      if (title) userDoc.title = title;
+    }
+
+    await adminDb.collection('users').doc(userRecord.uid).set(userDoc);
 
     return NextResponse.json({ success: true, uid: userRecord.uid, role, email, fullName }, { status: 201 });
   } catch (error: unknown) {
